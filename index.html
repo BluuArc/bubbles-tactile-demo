@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Sandbox</title>
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.6/d3.min.js"></script>
+    <link rel="stylesheet" href="./css/main.css" />
+</head>
+
+<body style="background:black">
+    <p class="score">Score: <span class="score" id="score-amount">0</span><br>
+        Time: <span id="time">0s</span><br>
+        Max Size: <span id="max-size">0</span><br>
+        Biggest Bubble: <span id="biggest">0</span><br>
+        <button style="display:none;" id="restart-button" onclick="startGame()">Restart</button>
+    </p>
+<script>
+    function getDifferenceFrom(early,late) {
+            var difference = new Date(late - early);
+            var attributes = {
+                days: 0,
+                hours: 0,
+                minutes: 0,
+                seconds: 0,
+                ms: 0
+            };
+
+            //conversion from this to milliseconds
+            const constants = {
+                ms: 1,
+                seconds: 1000,
+                minutes: 1000 * 60,
+                hours: 1000 * 60 * 60,
+                days: 1000 * 60 * 60 * 24
+            };
+
+            var divide = function (numerator, denominator) {
+                return {
+                    quotient: parseInt(numerator / denominator),
+                    remainder: numerator % denominator
+                };
+            };
+
+            //convert time in ms to various attributes
+            var total = difference.getTime();
+            for (var a in attributes) {
+                if (total > constants[a]) {
+                    var results = divide(total, constants[a]);
+                    attributes[a] = results.quotient;
+                    total = results.remainder;
+                }
+            }
+
+            var msg = "";
+            msg += (attributes.days < 10) ? (`0${attributes.days}`) : (attributes.days.toString());
+            msg += ":";
+            msg += (attributes.hours < 10) ? (`0${attributes.hours}`) : (attributes.hours.toString());
+            msg += ":";
+            msg += (attributes.minutes < 10) ? (`0${attributes.minutes}`) : (attributes.minutes.toString());
+            msg += ":";
+            msg += (attributes.seconds < 10) ? (`0${attributes.seconds}`) : (attributes.seconds.toString());
+            msg += ".";
+            msg += (attributes.ms < 10) ? (`00${attributes.ms}`) : (attributes.ms < 100) ? (`0${attributes.ms}`) : (attributes.ms.toString());
+            
+
+            return msg;
+        };
+
+    var svg = d3.select('body').append('svg');
+    var rectangle = svg.append('rect')
+        .attr('width', '100%').attr('height','100%')
+        .attr('fill','lightgray');
+
+    let startTime,curTime,maxRadius;
+    // d3.select('#max-size').text(maxRadius*2);
+    let radiusRate,spawnChance;
+
+    function plotPointAt(x,y){
+        return svg.append('circle').classed('bubble',true)
+        .attr('r',10)
+        .attr('cx',x)
+        .attr('cy',y);
+    }
+
+    let colors = ['#1b9e77', '#d95f02', '#7570b3', 'lightskyblue'];
+
+    let render;
+    function startGame(){
+        d3.select('#restart-button').style('display','none');
+
+        d3.selectAll('.bubble').remove();
+        d3.select('p').style('color', null);
+
+        startTime = new Date();
+        maxRadius = d3.max([svg.node().clientWidth, svg.node().clientHeight]);
+        d3.select('#max-size').text(maxRadius*2);
+        radiusRate = 5;
+        spawnChance = 0.1;
+        d3.select('#score-amount').text('0');
+        
+        let max = 0;
+        render = setInterval(() => {
+            d3.selectAll('.bubble')
+                .each(function () {
+                    let bubble = d3.select(this);
+
+                    if (+bubble.attr('r') < maxRadius) {
+                        bubble.attr('r', +(bubble.attr('r'))+radiusRate);
+                        max = Math.max(max, +(bubble.attr('r')));
+                    } else {
+                        clearInterval(render);
+                        d3.select('#biggest').text(max * 2);
+                        d3.selectAll('.bubble').on('click',null);
+                        d3.select('#restart-button').style('display', null);
+                        d3.select('p').style('color', 'red');
+                    }
+                });
+            d3.select('#biggest').text(max * 2);
+
+            let rng = Math.random();
+            if (rng <= spawnChance) {
+                //can spawn anywhere within 5% - 95% of the screen
+                let randX = Math.random() * 90 + 5;
+                let randY = Math.random() * 90 + 5;
+                let color = Math.round(Math.random() * 3);
+
+                plotPointAt(`${randX}%`, `${randY}%`).on('click', function () {
+                    d3.select(this)
+                        .classed('bubble',false)
+                        .transition()
+                        .duration(200)
+                        .style('opacity',0)
+                        .remove();
+                    d3.select('#score-amount').text(+(d3.select('#score-amount').text()) + 1);
+                    max = 0;
+                }).style('fill',colors[color])
+                .on('contextmenu',function(){
+                    d3.event.preventDefault();
+                    d3.select(this)
+                            .classed('bubble', false)
+                            .transition()
+                            .duration(200)
+                            .style('opacity', 0)
+                            .remove();
+                    d3.select('#score-amount').text(+(d3.select('#score-amount').text()) + 1);
+                    max = 0;
+                });
+            }
+
+            let curTime = new Date();
+            d3.select('#time').text(getDifferenceFrom(startTime, curTime));
+
+            d3.select('p.score').raise();
+        }, 50);
+    }
+
+    //globally disable context menu
+    d3.selectAll('*').on('contextmenu', function () {
+        d3.event.preventDefault();
+    });
+    startGame();
+
+</script>
+</body>
+</html>

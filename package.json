@@ -1,0 +1,15 @@
+{
+  "name": "bubble-tactile-demo",
+  "version": "1.0.0",
+  "description": "Small demo for large touch screen displays",
+  "main": "web_deployment.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Joshua Castor",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.15.3",
+    "yargs": "^8.0.2"
+  }
+}
