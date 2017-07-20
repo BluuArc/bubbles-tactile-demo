@@ -2,11 +2,15 @@
 <html>
 
 <head>
-    <title>Sandbox</title>
+    <title>Bubble TacTile Demo</title>
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.6/d3.min.js"></script>
+    <script src="http://hammerjs.github.io/dist/hammer.min.js"></script>
     <link rel="stylesheet" href="./css/main.css" />
+
+    <!-- Source: https://stackoverflow.com/questions/4472891/how-can-i-disable-zoom-on-a-mobile-web-page -->
+    <meta name="viewport" content="width=device-width, user-scalable=no" />
 </head>
 
 <body style="background:black">
@@ -76,6 +80,7 @@
     let startTime,curTime,maxRadius;
     // d3.select('#max-size').text(maxRadius*2);
     let radiusRate,spawnChance;
+    let timeIndicator,biggestIndicator,scoreIndicator, uiElement;
 
     function plotPointAt(x,y){
         return svg.append('circle').classed('bubble',true)
@@ -85,39 +90,52 @@
     }
 
     let colors = ['#1b9e77', '#d95f02', '#7570b3', 'lightskyblue'];
+    let strokes = ['#167f60', '#9b4503', '#5a568c', '#365264'];
+    let bubbles = [];
 
     let render;
     function startGame(){
         d3.select('#restart-button').style('display','none');
 
         d3.selectAll('.bubble').remove();
+        bubbles = [];
         d3.select('p').style('color', null);
 
         startTime = new Date();
         maxRadius = d3.max([svg.node().clientWidth, svg.node().clientHeight]);
+        timeIndicator = d3.select('#time');
+        biggestIndicator = d3.select('#biggest');
+        scoreIndicator = d3.select('#score-amount');
+        uiElement = d3.select('p.score');
         d3.select('#max-size').text(maxRadius*2);
         radiusRate = 5;
         spawnChance = 0.1;
-        d3.select('#score-amount').text('0');
+        scoreIndicator.text('0');
         
         let max = 0;
         render = setInterval(() => {
-            d3.selectAll('.bubble')
-                .each(function () {
-                    let bubble = d3.select(this);
-
+            let numbBubbles = 0;
+            for(let b of bubbles){
+                let bubble = b.d3;
+                if(bubble.classed('bubble')){
+                    numbBubbles++;
                     if (+bubble.attr('r') < maxRadius) {
                         bubble.attr('r', +(bubble.attr('r'))+radiusRate);
                         max = Math.max(max, +(bubble.attr('r')));
                     } else {
                         clearInterval(render);
-                        d3.select('#biggest').text(max * 2);
-                        d3.selectAll('.bubble').on('click',null);
+                        biggestIndicator.text(max * 2);
+                        for(let b of bubbles){
+                            b.hammer.get('tap').set({enable: false});
+                        }
                         d3.select('#restart-button').style('display', null);
                         d3.select('p').style('color', 'red');
+                        break;
                     }
-                });
-            d3.select('#biggest').text(max * 2);
+                }
+            }
+            // console.log(numbBubbles);
+            biggestIndicator.text(max * 2);
 
             let rng = Math.random();
             if (rng <= spawnChance) {
@@ -126,33 +144,48 @@
                 let randY = Math.random() * 90 + 5;
                 let color = Math.round(Math.random() * 3);
 
-                plotPointAt(`${randX}%`, `${randY}%`).on('click', function () {
-                    d3.select(this)
+                let bubble = plotPointAt(`${randX}%`, `${randY}%`)
+                    .style('fill',colors[color]).style('stroke',strokes[color])
+                    .on('contextmenu',function(){
+                        d3.event.preventDefault();
+                        d3.select(this)
+                                .classed('bubble', false)
+                                .transition()
+                                .duration(200)
+                                .style('opacity', 0)
+                                .remove();
+                        scoreIndicator.text(+(scoreIndicator.text()) + 1);
+                        max = 0;
+                    });
+
+                let tap_bubble = new Hammer(bubble.node()).on('tap',function(e){
+                    // console.log(e);
+                    d3.select(e.target)
                         .classed('bubble',false)
                         .transition()
                         .duration(200)
                         .style('opacity',0)
                         .remove();
-                    d3.select('#score-amount').text(+(d3.select('#score-amount').text()) + 1);
-                    max = 0;
-                }).style('fill',colors[color])
-                .on('contextmenu',function(){
-                    d3.event.preventDefault();
-                    d3.select(this)
-                            .classed('bubble', false)
-                            .transition()
-                            .duration(200)
-                            .style('opacity', 0)
-                            .remove();
-                    d3.select('#score-amount').text(+(d3.select('#score-amount').text()) + 1);
+                    scoreIndicator.text(+(scoreIndicator.text()) + 1);
                     max = 0;
                 });
+
+                bubbles.push({
+                    hammer: tap_bubble,
+                    d3: bubble
+                });
+            }else if(bubbles.length > 50){
+                //trim excess in array
+                console.log("Old length", bubbles.length);
+                let currentBubbles = bubbles.filter((b) => { return b.d3.classed('bubble'); });
+                bubbles = currentBubbles;
+                console.log("New length", bubbles.length);
             }
 
             let curTime = new Date();
-            d3.select('#time').text(getDifferenceFrom(startTime, curTime));
+            timeIndicator.text(getDifferenceFrom(startTime, curTime));
 
-            d3.select('p.score').raise();
+            uiElement.raise();
         }, 50);
     }
 
