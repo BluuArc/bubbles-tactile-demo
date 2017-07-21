@@ -27,7 +27,7 @@
         <div class="background"></div>
         <div class="menu panel panel-default">
             <div class="panel-heading" style="text-align:center;">
-                <h1>Bubbles TacTile Demo</h1>
+                <h1>Bubble TacTile Demo</h1>
             </div>
             <div class="panel-body" style="background:white; height:inherit;">
                 <div class="row">
@@ -96,7 +96,7 @@
                                         <td><span class="glyphicon glyphicon-info-sign" data-toggle="tooltip" title="The max radius that a bubble can get before game over"></span></td>
                                     </tr>
                                     <tr>
-                                        <td>Biggest:</td>
+                                        <td>Biggest</td>
                                         <td id="biggest">0</td>
                                         <td><span class="glyphicon glyphicon-info-sign" data-toggle="tooltip" title="The size of the current biggest bubble on the screen"></span></td>
                                     </tr>
@@ -191,6 +191,11 @@
         scoreIndicator.text(newVal.toFixed(0));
     }
 
+    function setMaxRadius(){
+        maxRadius = d3.max([svg.node().clientWidth, svg.node().clientHeight]);
+        d3.selectAll('#max-size').text(maxRadius*2);
+    }
+
     let render;
     function startGame(){
         d3.select('#restart-button').style('display','none');
@@ -200,13 +205,12 @@
         d3.select('p').style('color', null);
 
         startTime = new Date();
-        maxRadius = d3.max([svg.node().clientWidth, svg.node().clientHeight]);
-        scoreScale.domain([startRadius,maxRadius]);
+        setMaxRadius();
+        scoreScale.domain([startRadius,maxRadius-1]);
         timeIndicator = d3.selectAll('#time');
         biggestIndicator = d3.selectAll('#biggest');
         scoreIndicator = d3.selectAll('#score-amount');
         uiElement = d3.selectAll('p.score');
-        d3.selectAll('#max-size').text(maxRadius*2);
         radiusRate = +(d3.select('#growth-rate>#slider').node().value);
         spawnChance = +(d3.select('#spawn-rate>#slider').node().value)/100;
         scoreIndicator.text('0');
@@ -266,6 +270,7 @@
                                 .duration(200)
                                 .style('opacity', 0).attr('r',(+(bubble.attr('r')) * 5))
                                 .remove();
+                            appendScore(score,e.srcEvent.clientX,e.srcEvent.clientY);
                             // scoreIndicator.text(+(scoreIndicator.text()) + score);
                             updateScore(score);
                             max = 0;
@@ -300,6 +305,7 @@
         // d3.select('#restart-button').style('display', null);
         // d3.select('p').style('color', 'red');
 
+        d3.selectAll('#max-size').text(maxRadius*2);
         d3.select('div.menu-container').raise()
             .transition().duration(500)
             .style('opacity',1)
@@ -339,8 +345,21 @@
         setSliderEvents('growth-rate','radius-growth-rate-val');
         setSliderEvents('spawn-rate','spawn-rate-val');
 
+        setMaxRadius();
+
         d3.select('div.menu-container').raise();
-    })
+    });
+
+    function appendScore(score, x,y){
+        svg.append('text').text(`+${score.toFixed(0)}`).raise()
+            .attr('x',x).attr('y',y)
+            .attr('text-anchor','middle')
+            .attr('font-size',25)
+            .transition().duration(500)
+            .attr('transform','translate(0,-25)')
+            .style('opacity',0)
+            .remove();
+    }
 
 </script>
 </body>
