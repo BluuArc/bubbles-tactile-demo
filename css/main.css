@@ -22,6 +22,55 @@ p.score {
     background: white;
 }
 
+div.menu, div.menu-container {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+}
+
+div.menu-container {
+    left: 0;
+}
+
+div.menu {
+    left: 5%;
+    top: 3%;
+    width: 90%;
+    height: auto;
+    padding: 1%;
+    max-block-size: 95%;
+    background: gray;
+    overflow-y: overlay;
+}
+
+div.background {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    background: black;
+    opacity: 0.5;
+}
+
+div.panel-heading {
+    text-align: center;
+}
+
+.slider.slider-horizontal {
+    width: 100%;
+}
+
+.menu>.panel-body>.row {
+    margin: 0;
+}
+
+.menu-text{
+    font-size: large;
+}
+
+th {
+    text-align: center;
+}
+
 circle.bubble {
     fill: lightskyblue;
     stroke: none;
