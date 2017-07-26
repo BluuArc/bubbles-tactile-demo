@@ -110,6 +110,16 @@
                                         <td><span id="biggest-popped">0</span> (High Score: <span id="overall-biggest-popped">0</span>)</td>
                                         <td><span class="glyphicon glyphicon-info-sign" data-toggle="tooltip" title="The size of the biggest bubble popped"></span></td>
                                     </tr>
+                                    <tr>
+                                        <td>Final Radius Growth Rate</td>
+                                        <td id="final-growth-rate">-</td>
+                                        <td><span class="glyphicon glyphicon-info-sign" data-toggle="tooltip" title="Every frame there's a chance of a radius increase by 5. This has no cap."></span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Final Spawn Rate</td>
+                                        <td id="final-spawn-rate">-</td>
+                                        <td><span class="glyphicon glyphicon-info-sign" data-toggle="tooltip" title="Every frame there's a chance of spawn rate increase by 5%. This has a cap of 100%."></span></td>
+                                    </tr>
                                 </tbody>
                             </table>
                             <!-- <button style="display:none;" id="restart-button" onclick="startGame()">Restart</button> -->
@@ -237,6 +247,10 @@
         }
         cookieManager.set('biggestPopped', cookiePopped,365);
         d3.select('#overall-biggest-popped').text(cookiePopped*2);
+
+        //display final growth and spawn rates
+        d3.select('#final-growth-rate').text(radiusRate || '-');
+        d3.select('#final-spawn-rate').text((spawnChance !== undefined) ? `${spawnChance*100}%` : '-');
     }
 
     function setMaxRadius(){
