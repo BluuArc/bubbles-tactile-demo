@@ -392,10 +392,13 @@
 
     function appendScore(score, x,y){
         svg.append('text').text(`+${score.toFixed(0)}`).raise()
-            .attr('x',x).attr('y',y)
+            .attr('x',x).attr('y',y).classed('noselect',true)
             .attr('text-anchor','middle')
+            .style('pointer-events','none')
             .attr('font-size',25)
-            .transition().duration(500)
+            .on('click', function() {
+                d3.event.preventDefault();
+            }).transition().duration(500)
             .attr('transform','translate(0,-25)')
             .style('opacity',0)
             .remove();
