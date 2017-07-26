@@ -53,7 +53,7 @@
                                     <input id="slider" type="text" data-slider-min="1" data-slider-max="100" data-slider-step="1" data-slider-value="5"/>
                                 </div>
                                 <div class="col-md-6">
-                                    <span class="menu-text">Radius Growth Rate (Amount per Frame): <span id="radius-growth-rate-val">5</span></span>
+                                    <span class="menu-text">Base Radius Growth Rate (Amount per Frame): <span id="radius-growth-rate-val">5</span></span>
                                 </div>
                             </div>
                             <div class="row">
@@ -61,7 +61,15 @@
                                     <input id="slider" type="text" data-slider-min="1" data-slider-max="100" data-slider-step="0.01" data-slider-value="10"/>
                                 </div>
                                 <div class="col-md-6">
-                                    <span class="menu-text">Spawn Rate (Chance per Frame): <span id="spawn-rate-val">10</span>%</span>
+                                    <span class="menu-text">Base Spawn Rate (Chance per Frame): <span id="spawn-rate-val">10</span>%</span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6" id="difficulty-increase-rate">
+                                    <input id="slider" type="text" data-slider-min="1" data-slider-max="100" data-slider-step="0.01" data-slider-value="1"/>
+                                </div>
+                                <div class="col-md-6">
+                                    <span class="menu-text">Chance of Difficulty Increase (per Frame): <span id="difficulty-increase-rate-val">1</span>%</span><span class="glyphicon glyphicon-info-sign" data-toggle="tooltip" title="Every frame has a chance of randomly increasing growth rate or spawn rate"></span>
                                 </div>
                             </div>
                         </div>
@@ -165,6 +173,7 @@
         };
 
     let svg = d3.select('body').append('svg');
+    let w,h;
     let rectangle = svg.append('rect')
         .attr('width', '100%').attr('height','100%')
         .attr('fill','lightgray');
@@ -172,7 +181,7 @@
 
     let startTime,curTime,maxRadius;
     // d3.select('#max-size').text(maxRadius*2);
-    let radiusRate,spawnChance;
+    let radiusRate,spawnChance, difficultyIncreaseChance;
     let timeIndicator = d3.selectAll('#time');
     let biggestIndicator = d3.selectAll('#biggest');
     let scoreIndicator = d3.selectAll('#score-amount');
@@ -235,14 +244,21 @@
         d3.selectAll('#max-size').text(maxRadius*2);
     }
 
+    function setDimensions(){
+        w = svg.node().clientWidth;
+        h = svg.node().clientHeight;
+    }
+
     function renderFrame(){
         let numbBubbles = 0;
         for(let b of bubbles){
             let bubble = b.d3;
             if(bubble.classed('bubble')){
                 numbBubbles++;
-                if (+bubble.attr('r') < maxRadius) {
-                    bubble.attr('r', +(bubble.attr('r'))+radiusRate);
+                let bubbleRadius = +bubble.attr('r');
+                if (bubbleRadius < maxRadius) {
+                    let increase = (bubbleRadius+b.radiusRate) <= maxRadius ? b.radiusRate : (maxRadius - bubbleRadius);
+                    bubble.attr('r', +(bubble.attr('r'))+increase);
                     max = Math.max(max, +(bubble.attr('r')));
                 } else {
                     stopGame();
@@ -261,42 +277,50 @@
             let color = Math.round(Math.random() * 3);
 
             let bubble = plotPointAt(`${randX}%`, `${randY}%`)
-                .style('fill',colors[color]).style('stroke',strokes[color])
-                .on('contextmenu',function(){
-                    d3.event.preventDefault();
-                    let bubble = d3.select(this);
-                    let score = scoreScale(+(bubble.attr('r')));
-                    bubble.classed('bubble', false).style('pointer-events','none')
-                        .transition()
-                        .duration(200)
-                        .style('opacity', 0).attr('r',(+(bubble.attr('r')) * 5))
-                        .remove();
-                    // scoreIndicator.text(+(scoreIndicator.text()) + score);
-                    updateScore(score);
-                    max = 0;
-                });
+                .style('fill',colors[color]).style('stroke',strokes[color]);
 
             let tap_bubble = new Hammer(bubble.node()).on('tap',function(e){
                 let bubble = d3.select(e.target);
-                let score = scoreScale(+(bubble.attr('r')));
-                biggestPopped = Math.max(biggestPopped,+(bubble.attr('r')));
-                biggestPoppedIndicator.text(biggestPopped*2);
-                bubble.classed('bubble', false).style('pointer-events','none')
+                let radius = +(bubble.attr('r'));
+                if(radius < maxRadius){
+                    let score = scoreScale(radius);
+                    biggestPopped = Math.max(biggestPopped,radius);
+                    biggestPoppedIndicator.text(biggestPopped*2);
+                    bubble.classed('bubble', false).style('pointer-events','none')
                     .transition()
                     .duration(200)
-                    .style('opacity', 0).attr('r',(+(bubble.attr('r')) * 5))
+                    .style('opacity', 0).attr('r',(radius * 5))
                     .remove();
-                appendScore(score,e.srcEvent.clientX,e.srcEvent.clientY);
-                // scoreIndicator.text(+(scoreIndicator.text()) + score);
-                updateScore(score);
-                max = 0;
+                    appendScore(score,e.srcEvent.clientX,e.srcEvent.clientY);
+                    // scoreIndicator.text(+(scoreIndicator.text()) + score);
+                    updateScore(score);
+                    max = 0;
+                }else{
+                    stopGame();
+                }
             });
 
             bubbles.push({
                 hammer: tap_bubble,
-                d3: bubble
+                d3: bubble,
+                radiusRate: radiusRate
             });
-        }else if(bubbles.length > spawnChance*100*(100-radiusRate+1)){
+        }
+        
+        rng = Math.random();
+        if(rng <= difficultyIncreaseChance){
+            rng = Math.random();
+            if(rng <= 0.5){
+                spawnChance += 0.05;
+                if(spawnChance > 1) spawnChance = 1;
+                else send_game_message("Spawn chance increased by 5%");
+            }else{
+                radiusRate += 5;
+                send_game_message("Radius Growth Rate increased by 5");
+            }
+        }
+        
+        if(bubbles.length > spawnChance*100*(100-radiusRate+1)){
             //trim excess in array
             console.log("Old length", bubbles.length);
             let currentBubbles = bubbles.filter((b) => { return b.d3.classed('bubble'); });
@@ -317,13 +341,18 @@
         d3.selectAll('.bubble').remove();
         bubbles = [];
         d3.select('p').style('color', null);
+        
 
         startTime = new Date();
         setMaxRadius();
+        setDimensions();
         scoreScale.domain([startRadius,maxRadius-1]);
         radiusRate = +(d3.select('#growth-rate>#slider').node().value);
         spawnChance = +(d3.select('#spawn-rate>#slider').node().value)/100;
+        difficultyIncreaseChance = +(d3.select('#difficulty-increase-rate>#slider').node().value)/100;
         scoreIndicator.text('0');
+        biggestPoppedIndicator.text('0');
+        biggestPopped = 0;
         
         d3.select('div.menu-container').style('pointer-events','none')
             .transition().duration(500)
@@ -383,8 +412,10 @@
         //initial slider code based off of http://seiyria.com/bootstrap-slider/
         setSliderEvents('growth-rate','radius-growth-rate-val');
         setSliderEvents('spawn-rate','spawn-rate-val');
+        setSliderEvents('difficulty-increase-rate','difficulty-increase-rate-val');
 
         setMaxRadius();
+        setDimensions();
 
         updateStatistics();
         d3.select('div.menu-container').raise();
@@ -399,6 +430,20 @@
             .on('click', function() {
                 d3.event.preventDefault();
             }).transition().duration(500)
+            .attr('transform','translate(0,-25)')
+            .style('opacity',0)
+            .remove();
+    }
+
+    function send_game_message(msg){
+        svg.append('text').text(msg).raise().classed('noselect',true)
+            .attr('x',w*0.5).attr('y', h*0.5)
+            .attr('text-anchor','middle')
+            .style('pointer-events','none')
+            .attr('font-size',25).attr('font-weight','bold')
+            .on('click', function() {
+                d3.event.preventDefault();
+            }).transition().duration(750)
             .attr('transform','translate(0,-25)')
             .style('opacity',0)
             .remove();
